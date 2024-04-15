@@ -1,0 +1,177 @@
+*{
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body{
+  font-family: Arial, Helvetica, sans-serif;
+}
+
+.container {
+  width: 100%;
+  height: 90vh;
+  margin: 30px auto;
+  display: flex;
+  padding: 10px;
+
+}
+
+#right-container{
+  width: 100%;
+  /* background-color: red; */
+}
+
+
+#chat-window {
+  width: 100%;
+  height: 90%;
+  border: 1px solid #ddd;
+  border-radius: 5px;
+  margin-bottom: 10px;
+  padding: 10px;
+  overflow-y: auto;
+  background: #f9f9f9;
+  /* display: flex; */
+  box-shadow: rgba(0, 0, 0, 0.15) 0px 5px 15px 0px;
+}
+
+#operation-window{
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+
+}
+
+#chat-input {
+  width: 100%;
+  padding: 10px;
+  border: 1px solid #ddd;
+  border-radius: 5px;
+  margin-right: -1px;
+  box-shadow: rgba(17, 17, 26, 0.05) 0px 4px 16px, rgba(17, 17, 26, 0.05) 0px 8px 32px;
+}
+
+#send-btn {
+  width: 60px;
+  padding: 10px;
+  border: none;
+  background: #007bff;
+  color: white;
+  cursor: pointer;
+}
+
+#send-btn:hover {
+  background: #0056b3;
+}
+
+.mother-div{
+  /* background-color: red; */
+  width: 100%;
+  min-height: 50px; 
+} 
+
+div.message {
+  display: block;
+  float: right;
+  padding: 5px 10px;
+  margin-top: 2px;
+  border-radius: 5px;
+  background-color: turquoise;
+  width: fit-content; 
+}
+
+
+
+.message-recieve{
+  width: fit-content;
+  float: left;
+  padding: 5px 10px;
+  margin-top: 2px;
+  border-radius: 5px;
+  display: block;
+  background-color: gray;
+}
+
+
+nav{
+  display: flex;
+  justify-content:space-between;
+  align-items: center;
+  padding: 5px;
+  box-shadow: rgba(100, 100, 111, 0.2) 0px 7px 29px 0px;
+}
+
+
+.left-nav{
+  width: 20%;
+  padding: 2px;
+}
+
+.right-nav{
+  width: 60%;
+}
+
+ul{
+  list-style: none;
+  display: flex;
+}
+
+
+a{
+  text-decoration: none;
+  font-size: 1em;
+  border-radius: 5px;
+  color: white;
+  padding: 5px;
+  background-color: black;
+}
+
+a:hover{
+  background-color: white;
+  color: black;
+}
+
+.bottom-container{
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  height: 90vh;
+}
+
+
+
+.nav-bar{
+  margin-right: 5px;
+  height: 90vh;
+  width: 30%;
+}
+
+.nav-bar > ul{
+  list-style: none;
+  display: flex;
+  text-decoration: none;
+  flex-direction: column;
+  justify-content: start;
+  align-items: center;
+  width: 100%;
+  height: 100%;
+}
+
+li{
+  margin-right: 10px;
+
+}
+
+.content{
+  width: 60%;
+}
+
+
+.friends{
+
+  width: 90%;
+  padding: 5px;
+
+}

@@ -1,0 +1,27 @@
+<div class="container">
+  <div id="right-container">
+    <div id="chat-window">
+
+      <% chat_history.forEach((chat)=>{  %>
+
+      <div class='mother-div'>
+          <% if (chat['to'] === username ){ %>
+             <div style="background-color:gray; padding:5px 10px; margin-top: 2px; border-radius : 5px; width: fit-content; float: left;" ><%= chat['content'] %> </div>
+          <% } else { %>
+              <div style="background-color:turquoise; padding:5px 10px; margin-top: 2px; border-radius : 5px; width: fit-content; float: right;"><%= chat['content'] %> </div>
+
+          <% } %>
+      </div>
+      <% })%>
+
+    </div>
+    
+
+    <div id="operation-window">
+      <input type='text' id="chat-input" placeholder='chat' />
+      <button id="send-btn" onclick='send_message()'>
+        Send
+      </button>
+    </div>
+  </div>
+</div>

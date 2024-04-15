@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>All Members</title>
+    <link rel="stylesheet" href="/css/members.css">
+  </head>
+
+  <body>
+    <div class="membersContainer">
+      <div class="membersHeader">
+        <h2>Explore All Members</h2>
+      </div>
+
+      <div class="membersInput">
+        <input type="text" placeholder="Search Member">
+      </div>
+
+      <div class="membersResult">
+        <% Members.forEach((member)=>{ %>
+        <% console.log(Members) %>
+        <div class="membersResultSingle">
+          <div class="membersResultSingleLeft">
+            <div class="membersIcon">
+              <img src="/images/user.png" alt="icon">
+            </div>
+            <div class="membersUsername">
+              <h3> <%= member %></h3>
+            </div>
+          </div>
+
+          <div class="membersResultSingleRight">
+            <button onclick="add_friend('<%= member %>')">Message</button>
+          </div>
+        </div>
+
+        <% }) %>
+      </div>
+
+    </div>
+
+    <script>
+
+    function getCookie(name){
+      const arr = document.cookie
+      const array = arr.split("=");
+      return array[1]
+    }
+
+    function add_friend(friend){
+      const username = getCookie('username')
+      
+      fetch('http://localhost:9999/add-friend',{
+        method: 'POST',
+        headers : {
+          'Content-Type' : 'application/json',
+        },
+        body : JSON.stringify({
+          friend  : friend,
+          username : username
+        })
+      })
+    }
+
+    </script>
+  </body>
+
+</html>
