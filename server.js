@@ -10,15 +10,14 @@ import cookieParser from "cookie-parser";
 import dotenv from 'dotenv'
 import cors from 'cors'
 
+// defining __dirname and __filename
+import { fileURLToPath } from 'url';
+import { dirname } from 'path';
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+
 
 dotenv.config()
-
-
-//connect to mongodb
-mongoose.connect("mongodb://localhost:27017/chat-app")
-  .then(()=> console.log("Mongodb connected"))
-  .catch((e)=>console.log("error: ", e))
-
 
 //express boiler plate
 const app = express();
@@ -207,6 +206,59 @@ app.post('/fetch-chat-history', async(req, res)=>{
     username: req.cookies.username,
     chat_history : result
   })
+
+})
+
+app.get('/auth', (req, res)=>{
+  console.log(__dirname)
+  res.sendFile('/views/auth.html', {root: __dirname})
+})
+
+app.post('/signin', (req,res)=>{
+
+  let username = req.body['signin_username']
+  let password = req.body['signin_password']
+    
+  console.log({username, password})
+  
+})
+
+app.post('/signup', async (req, res)=>{
+
+  let username = req.body['signup_username']
+  let email = req.body['signup_email']
+  let password = req.body['signup_password']
+
+  console.log({username, email, password})
+
+  // make sure email || username does not exist
+  const existingUser = await Users.findOne({
+    $or : [
+      {username: username},
+      {email: email}
+    ]
+  })
+
+  if(existingUser){
+    console.log(existingUser)
+    console.log('User already exists')
+    return
+  }
+
+  const user = await Users.create({
+    username: username,
+    password: password,
+    email: email,
+    friends: []
+  })
+    .then(user => {
+      
+      console.log('User Creation Successfull', user)
+
+      // create a jwt token for the user
+    
+    })
+
 
 })
 

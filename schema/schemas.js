@@ -1,25 +1,63 @@
 import mongoose from "mongoose"
+import bcrypt from "bcrypt"
+
 
 mongoose.connect("mongodb://localhost:27017/chat-app")
 .then(()=> console.log("Mongodb connected"))
 .catch((e)=>console.log("error: ", e))
 
 const userSchema = new mongoose.Schema({
-  name : {
+  username : {
     type: String,
-    required : true
+    required : true,
+    unique: true
+  },
+  email : {
+    type: String,
+    required: true,
+    unique: true
+  },
+  password:{
+    type: String,
+    required: true,
+    unique: true
   },
   friends : [{ orderId: mongoose.Schema.Types.ObjectId}]
 })
 
-const Users = mongoose.model("Users" , userSchema)
+userSchema.pre('save', async function(next){
 
+  try{
+      if(this.isModified('password')){
+        const hash = await bcrypt.hash(this.password, 10)
+        this.password = hash
+      }
+      next()
+  }catch (error) {
+    next(err)
+  }
+
+})
+
+
+userSchema.methods.comparePassword = async function(password){
+  if(!password) throw Error('Password is missing')
+
+  try{
+    const result = await bcrypt.compare(password, this.password)
+  }catch(error){
+    console.log('Error : ', error.message)
+  }
+}
+
+const Users = mongoose.model("Users" , userSchema)
 
 
 const messageSchema = new mongoose.Schema({
   to : {
     type : String,
-    required : true
+    required : true,
+    unique: true
   },
   from : {
     type : String,
