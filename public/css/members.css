@@ -67,10 +67,6 @@ body{
     margin-right: 10px;
 }
 
-.membersResultSingleRight{
-    
-}
-
 .membersResultSingleRight>button{
     padding: 3px 15px;
     font-size: 17px;
@@ -82,4 +78,62 @@ body{
 .membersResultSingleRight>button:hover{
     background-color: black;
     color: white;
+}
+
+
+nav{
+  display: flex;
+  justify-content:space-between;
+  align-items: center;
+  padding: 5px;
+  box-shadow: rgba(100, 100, 111, 0.2) 0px 7px 29px 0px;
+}
+
+
+.left-nav{
+  width: 20%;
+  padding: 2px;
+}
+
+.right-nav{
+  width: 60%;
+  display: flex;
+  justify-content: space-around;
+}
+
+ul{
+  list-style: none;
+  display: flex;
+}
+
+
+a{
+  text-decoration: none;
+  font-size: 1em;
+  border-radius: 5px;
+  color: white;
+  padding: 5px;
+  background-color: black;
+}
+
+a:hover{
+  background-color: white;
+  color: black;
+}
+
+li{
+  margin-right: 10px;
+}
+
+.logout{
+  padding: 3px 15px;
+    font-size: 17px;
+    border-radius: 5px;
+    border: 0;
+    font-weight: bold;
+}
+
+.logout:hover{
+  background-color: black;
+  color: white;
 }

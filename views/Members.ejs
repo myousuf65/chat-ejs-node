@@ -9,6 +9,35 @@
   </head>
 
   <body>
+
+
+    <nav>
+      <div class="left-nav">
+        <h1>Chat App</h1>
+      </div>
+
+      <div class="right-nav">
+        <ul>
+          <li>
+            <a class='links' href="/all-members">
+              Browse All Members
+            </a>
+          </li>
+          <li>
+            <a class='links' href="/direct">
+              Browse All Groups
+            </a>
+          </li>
+          <li class="links">
+            <%= username %>
+          </li>
+
+        </ul>
+        <button class='logout' onclick='logout()'>Logout</button>
+
+      </div>
+    </nav>
+
     <div class="membersContainer">
       <div class="membersHeader">
         <h2>Explore All Members</h2>
@@ -51,11 +80,11 @@
 
     function add_friend(friend){
       const username = getCookie('username')
-      
+
       fetch('http://localhost:9999/add-friend',{
         method: 'POST',
         headers : {
-          'Content-Type' : 'application/json',
+         'Content-Type' : 'application/json',
         },
         body : JSON.stringify({
           friend  : friend,
@@ -63,6 +92,11 @@
         })
       })
     }
+
+    function logout(){
+      fetch('/logout').then(res => window.location.reload())
+    }
+
 
     </script>
   </body>

@@ -111,6 +111,9 @@ nav{
 
 .right-nav{
   width: 60%;
+  display: flex;
+  justify-content: space-around;
+
 }
 
 ul{
@@ -174,4 +177,18 @@ li{
   width: 90%;
   padding: 5px;
 
+}
+
+
+.logout{
+  padding: 3px 15px;
+  font-size: 17px;
+  border-radius: 5px;
+  border: 0;
+  font-weight: bold;
+}
+
+.logout:hover{
+  background-color: black;
+  color: white;
 }

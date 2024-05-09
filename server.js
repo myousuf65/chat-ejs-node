@@ -5,10 +5,14 @@ import express from "express"
 import mongoose from "mongoose"
 import bodyParser from "body-parser"
 import Members from "./Members.js";
-import {Users, Messages} from "./schema/schemas.js"
+import { Users, Messages } from "./schema/schemas.js"
 import cookieParser from "cookie-parser";
 import dotenv from 'dotenv'
 import cors from 'cors'
+import jwt from 'jsonwebtoken'
+import { createJWT } from "./jwt.js"
+import { checkLogin } from "./middlewares/checkLogin.js";
+
 
 // defining __dirname and __filename
 import { fileURLToPath } from 'url';
@@ -28,6 +32,8 @@ app.use(bodyParser.urlencoded({ extended: true }));
 app.use(bodyParser.json())
 app.use(cookieParser())
 app.use(cors())
+
+
 
 //initialization http server
 const server = http.createServer();
@@ -56,23 +62,14 @@ server.on("upgrade", (request, socket, head) => {
 
 wsServer.on("connection", async (connection) => {
 
-  // adding new users to db
-  // const all = await Users.findOne({name: username})
-  // if (all === null){
-  //   const User = await Users.create({
-  //     name : username,
-  //     friends: []
-  //   })
-  // }
-
   // creating connection instance for user
   const m = new Members(username, connection)
 
-  console.log("New client connected", username);
+  console.log("New client connected", username, '\n');
 
   connection.on("message", async (message) => {
-   
-    
+
+
     const _message = JSON.parse(message);
     console.log(_message)
     if (_message.messageType === "DM") {
@@ -87,17 +84,17 @@ wsServer.on("connection", async (connection) => {
       };
 
       const result = await Messages.create({
-        from : _message.from,
-        to : _message.to,
-        content : _message.content
+        from: _message.from,
+        to: _message.to,
+        content: _message.content
       })
 
       console.log(payload);
-      
-      if(receiverConn !== undefined){
+
+      if (receiverConn !== undefined) {
         receiverConn.connection.send(JSON.stringify(payload));
       }
-      
+
     }
   });
 
@@ -112,134 +109,152 @@ wsServer.on("connection", async (connection) => {
   });
 });
 
-app.get("/", (req, res) => {
+app.get("/", checkLogin, async (req, res) => {
 
-  res.render("login");
-});
-
-app.post("/submit-username", async(req, res) => {
-  username = req.body.username;
+  username = req.username;
   let friends = []
 
   //query for friends
-  async function gettingFriends(allFriends){
+  async function gettingFriends(allFriends) {
     const friends = []
-    for (const friend of allFriends['friends']){
+    for (const friend of allFriends['friends']) {
       const fName = await Users.findById(friend['_id'])
-      friends.push(fName['name'])
+      friends.push(fName['username'])
     }
 
     return friends
   }
 
-  const allFriends = await Users.findOne({name : username}, {friends : 1})
-  
-  // console.log(allFriends)
-  if (allFriends !== null){
+  const allFriends = await Users.findOne({ username : username }, { friends: 1 })
+
+  console.log(allFriends)
+  if (allFriends !== null) {
     friends = await gettingFriends(allFriends)
   }
 
-
-  res.cookie('username', username)
-
   res.render("home", {
-    username : username,
-    friends : friends
+    username: username,
+    friends: friends
   });
 
 });
 
 
-app.post("/add-friend", async (req, res) => {
+app.post("/add-friend", checkLogin, async (req, res) => {
 
-  const friend_name = req.body.friend 
-  const username = req.cookies.username
+  const friend_name = req.body.friend
+  const username = req.username
 
+  console.log({friend_name, username})
   // finding friend
-  const friendQuery = {name : friend_name}
+  const friendQuery = { username: friend_name }
   const friendId = await Users.findOne(friendQuery)
-  console.log("friend is ", friend_name, " friend id", friendId['_id'])
-  
+  // console.log(friendId)
+  // console.log("friend is ", friend_name, " friend id", friendId['_id'])
+
   //finding user
-  const Userquery = {name : username}
-  const user = await Users.findOne(Userquery,{friends : 1})
-    console.log("user is ",  username, " user id", user['_id'])
+  const Userquery = { username : username }
+  const user = await Users.findOne(Userquery, { friends: 1 })
+  // console.log("user is ", username, " user id", user['_id'])
 
 
   user.friends.push(friendId)
   const updatedUser = await user.save()
 
-  console.log(updatedUser)
+  // console.log(updatedUser)
 
 });
 
-app.get("/all-members", async (req, res) => {
+app.get("/all-members", checkLogin, async (req, res) => {
 
   const all = await Users.find({})
   const members = []
 
-  all.forEach((item)=>{
-    members.push(item['name'])
+  all.forEach((item) => {
+    if (item['username'] !== req.username) {
+      members.push(item['username'])
+
+    }
   })
 
   res.render("Members", {
     Members: members,
+    username: req.username
   });
 });
 
-app.post('/fetch-chat-history', async(req, res)=>{
+app.post('/fetch-chat-history', async (req, res) => {
 
   let from = req.cookies.username
   console.log(req.cookies)
-  let to = req.body.to 
+  let to = req.body.to
 
   //retreive all messages
   const result = await Messages.find(
-      {"$or":[{"to": to, "from": from}, {"to": from, "from": to}]}  
-  ).sort({createdAt : 1 })
+    { "$or": [{ "to": to, "from": from }, { "to": from, "from": to }] }
+  ).sort({ createdAt: 1 })
 
 
-  console.log("to: ", to, " from: " ,from)
+  console.log("to: ", to, " from: ", from)
 
 
   res.render('chat', {
     username: req.cookies.username,
-    chat_history : result
+    chat_history: result
   })
 
 })
 
-app.get('/auth', (req, res)=>{
+app.get('/auth', (req, res) => {
   console.log(__dirname)
-  res.sendFile('/views/auth.html', {root: __dirname})
+  res.sendFile('/views/auth.html', { root: __dirname })
 })
 
-app.post('/signin', (req,res)=>{
+app.post('/signin', async (req, res) => {
 
   let username = req.body['signin_username']
   let password = req.body['signin_password']
+
+  console.log({ username, password })
+
+  const user = await Users.findOne({ username: username })
+
+  const isMatch = await user.comparePassword(password)
+
+  if (isMatch) {
+    const token = createJWT({
+      username: user.username,
+      email: user.email
+    })
+
+    res.cookie('token', token)
+    res.redirect("/")
+  }else{
     
-  console.log({username, password})
-  
+    res.sendStatus(403).send('Credentials incorrect')
+    res.redirect('/auth')
+
+  }
+
 })
 
-app.post('/signup', async (req, res)=>{
+app.post('/signup', async (req, res) => {
 
   let username = req.body['signup_username']
   let email = req.body['signup_email']
   let password = req.body['signup_password']
 
-  console.log({username, email, password})
+  console.log({ username, email, password })
 
   // make sure email || username does not exist
   const existingUser = await Users.findOne({
-    $or : [
-      {username: username},
-      {email: email}
+    $or: [
+      { username: username },
+      { email: email }
     ]
   })
 
-  if(existingUser){
+  if (existingUser) {
     console.log(existingUser)
     console.log('User already exists')
     return
@@ -252,21 +267,35 @@ app.post('/signup', async (req, res)=>{
     friends: []
   })
     .then(user => {
-      
-      console.log('User Creation Successfull', user)
 
-      // create a jwt token for the user
-    
+      const token = createJWT({
+        username: user.username,
+        email: user.email
+      })
+
+      res.cookie('token', token)
+      return res.redirect('/')
+
     })
 
 
 })
 
+
+app.get('/logout', (req, res)=>{
+  
+  res.clearCookie('token')
+  res.redirect('/auth')
+
+})
+
+
+
 app.listen(process.env.EXPRESS_PORT, '0.0.0.0', () => {
   console.log("Express Server Running on ", process.env.EXPRESS_PORT);
 });
 
-server.listen(process.env.WEBSOCKET_PORT, '0.0.0.0' , () => {
+server.listen(process.env.WEBSOCKET_PORT, '0.0.0.0', () => {
   console.log(`Server listening on port ${process.env.WEBSOCKET_PORT}`);
 });
 

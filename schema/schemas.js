@@ -44,7 +44,9 @@ userSchema.methods.comparePassword = async function(password){
   if(!password) throw Error('Password is missing')
 
   try{
-    const result = await bcrypt.compare(password, this.password)
+    const isMatch = await bcrypt.compare(password, this.password)
+    return isMatch
+
   }catch(error){
     console.log('Error : ', error.message)
   }

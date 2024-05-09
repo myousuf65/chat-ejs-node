@@ -34,6 +34,8 @@
               <%= username %>
             </li>
           </ul>
+
+          <button class='logout' onclick='logout()'>Logout</button>
         </div>
       </nav>
 
@@ -63,18 +65,16 @@
     let ws;
 
     window.onload = function(){
-      
-      const arr = document.cookie
-      console.log(arr)
-      const array = arr.split("=");
-      let username = array[1]
-              
+
+      let username = '<%= username %>'
+      console.log(username)
+
       ws = new WebSocket(`ws://localhost:8080/?username=${username}`)
 
       ws.onopen = function(event){
         alert('connection successful')
       }
-      
+
 
       ws.addEventListener("message",(event)=>{
 
@@ -161,7 +161,9 @@
       ws.send(JSON.stringify(payload))
     }
 
-
+    function logout(){
+      fetch('/logout').then(res => window.location.reload())
+    }
 
     </script>
   </body>
