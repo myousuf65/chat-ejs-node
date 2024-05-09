@@ -69,7 +69,6 @@ wsServer.on("connection", async (connection) => {
 
   connection.on("message", async (message) => {
 
-
     const _message = JSON.parse(message);
     console.log(_message)
     if (_message.messageType === "DM") {
@@ -183,11 +182,10 @@ app.get("/all-members", checkLogin, async (req, res) => {
   });
 });
 
-app.post('/fetch-chat-history', async (req, res) => {
+app.post('/fetch-chat-history', checkLogin, async (req, res) => {
 
-  let from = req.cookies.username
-  console.log(req.cookies)
-  let to = req.body.to
+  let from = req.body['from']
+  let to = req.body['to']
 
   //retreive all messages
   const result = await Messages.find(
@@ -195,11 +193,9 @@ app.post('/fetch-chat-history', async (req, res) => {
   ).sort({ createdAt: 1 })
 
 
-  console.log("to: ", to, " from: ", from)
-
 
   res.render('chat', {
-    username: req.cookies.username,
+    username: req.username ,
     chat_history: result
   })
 
