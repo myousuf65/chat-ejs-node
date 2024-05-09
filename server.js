@@ -1,7 +1,7 @@
 import http from "http"
 import { WebSocketServer } from "ws";
 import url from "url"
-import express from "express"
+import express, { response } from "express"
 import mongoose from "mongoose"
 import bodyParser from "body-parser"
 import Members from "./Members.js";
@@ -12,7 +12,7 @@ import cors from 'cors'
 import jwt from 'jsonwebtoken'
 import { createJWT } from "./jwt.js"
 import { checkLogin } from "./middlewares/checkLogin.js";
-
+import { sendEmail } from "./auth/emailjs.js"
 
 // defining __dirname and __filename
 import { fileURLToPath } from 'url';
@@ -124,7 +124,7 @@ app.get("/", checkLogin, async (req, res) => {
     return friends
   }
 
-  const allFriends = await Users.findOne({ username : username }, { friends: 1 })
+  const allFriends = await Users.findOne({ username: username }, { friends: 1 })
 
   console.log(allFriends)
   if (allFriends !== null) {
@@ -144,7 +144,7 @@ app.post("/add-friend", checkLogin, async (req, res) => {
   const friend_name = req.body.friend
   const username = req.username
 
-  console.log({friend_name, username})
+  console.log({ friend_name, username })
   // finding friend
   const friendQuery = { username: friend_name }
   const friendId = await Users.findOne(friendQuery)
@@ -152,7 +152,7 @@ app.post("/add-friend", checkLogin, async (req, res) => {
   // console.log("friend is ", friend_name, " friend id", friendId['_id'])
 
   //finding user
-  const Userquery = { username : username }
+  const Userquery = { username: username }
   const user = await Users.findOne(Userquery, { friends: 1 })
   // console.log("user is ", username, " user id", user['_id'])
 
@@ -195,7 +195,7 @@ app.post('/fetch-chat-history', checkLogin, async (req, res) => {
 
 
   res.render('chat', {
-    username: req.username ,
+    username: req.username,
     chat_history: result
   })
 
@@ -225,8 +225,8 @@ app.post('/signin', async (req, res) => {
 
     res.cookie('token', token)
     res.redirect("/")
-  }else{
-    
+  } else {
+
     res.sendStatus(403).send('Credentials incorrect')
     res.redirect('/auth')
 
@@ -238,9 +238,6 @@ app.post('/signup', async (req, res) => {
 
   let username = req.body['signup_username']
   let email = req.body['signup_email']
-  let password = req.body['signup_password']
-
-  console.log({ username, email, password })
 
   // make sure email || username does not exist
   const existingUser = await Users.findOne({
@@ -258,6 +255,70 @@ app.post('/signup', async (req, res) => {
 
   const user = await Users.create({
     username: username,
+    password: 'some_pass',
+    email: email,
+    friends: []
+  })
+    .then(user => {
+
+      const username = user.username
+      const email = user.email
+      const id = user.id
+
+      const link = `${process.env.APP_URL}/verify-email/${id}`
+      sendEmail(username, email, link)
+        .then(
+          (response) => {
+            console.log("su", response)
+            res.render('confirm_email', {
+              email: email
+            })
+          },
+          (error) => {
+            console.log("err", error)
+            res.send('There has been an error. Please try again')
+          }
+        )
+
+    })
+})
+
+// app.get('/verify-email/:id', async (req, res) => {
+//
+//   // find user by id 
+//   const user = await Users.findById(req.params.id)
+//
+//   console.log(user)
+//
+// })
+app.get('/verify-email/:id', async (req, res) => {
+
+  try{  
+    const user = await Users.findOne({_id: req.params.id})
+
+    // Log the user object to the console
+    console.log(user);
+    res.render('password',{
+      email: user.email
+    })
+  }catch(err){
+    console.log(err)
+  }
+
+});
+
+
+
+app.post('/create-user/:id', async (req, res) => {
+
+
+  // receive credtials from set password page and set password for username
+
+
+
+  // find that user and set password for that user
+  const user = await Users.create({
+    username: username,
     password: password,
     email: email,
     friends: []
@@ -273,13 +334,10 @@ app.post('/signup', async (req, res) => {
       return res.redirect('/')
 
     })
-
-
 })
 
+app.get('/logout', (req, res) => {
 
-app.get('/logout', (req, res)=>{
-  
   res.clearCookie('token')
   res.redirect('/auth')
 
