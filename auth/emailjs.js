@@ -7,6 +7,8 @@ const options = {
   publicKey: process.env.EMAILJS_PUBLIC_KEY,
   privateKey: process.env.EMAILJS_PRIVATE_KEY,
 }
+
+
 export function sendEmail(username, verification_email, verification_link){
 
   const templateParamas = {
@@ -19,5 +21,20 @@ export function sendEmail(username, verification_email, verification_link){
   return emailjs.send(process.env.EMAILJS_SERVICE_ID, process.env.EMAILJS_TEMPLATE_ID, templateParamas, options)
 
 }
+
+export function changePaas(username, reset_email, reset_link){
+
+  const templateParamas = {
+    to_name: username,
+    subject: 'Reset Password',
+    message: reset_link,
+    verify_email: reset_email
+  }
+
+  return emailjs.send(process.env.EMAILJS_SERVICE_ID, process.env.EMAILJS_TEMPLATE_ID, templateParamas, options)
+
+}
+
+
 
 // emailjs.init(options)

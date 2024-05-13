@@ -35,13 +35,36 @@
       color: #555;
       font-weight: 300;
     }
+    .logout{
+  padding: 3px 15px;
+  font-size: 17px;
+  border-radius: 5px;
+  border: 0;
+  font-weight: bold;
+}
+
+.logout:hover{
+  background-color: black;
+  color: white;
+}
     </style>
   </head>
   <body>
     <div class="confirmation-container">
-      <h1>We have sent you an email to <%=email%> </h1>
-      <p>Please open your email to <%= message %> </p>
+      <h1>Your password has been reset successfully.</h1>
+          <button class='logout' onclick='logout()'>Click here to Login</button>
     </div>
-    <script src="script.js"></script>
-  </body>
+
+
+  <script>
+  console.log('fuck uou')
+      function logout(){
+        window.location.href='/auth'
+      }
+  </script>
+
+  
+
+</body>
+
 </html>

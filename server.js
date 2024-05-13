@@ -12,7 +12,7 @@ import cors from 'cors'
 import jwt from 'jsonwebtoken'
 import { createJWT } from "./jwt.js"
 import { checkLogin } from "./middlewares/checkLogin.js";
-import { sendEmail } from "./auth/emailjs.js"
+import { changePaas, sendEmail } from "./auth/emailjs.js"
 
 // defining __dirname and __filename
 import { fileURLToPath } from 'url';
@@ -226,7 +226,7 @@ app.post('/signin', async (req, res) => {
       username: user.username,
       email: user.email
     })
-   
+
     console.log(token)
     res.cookie('token',token )
     res.redirect("/")
@@ -276,7 +276,8 @@ app.post('/signup', async (req, res) => {
           (response) => {
             console.log("su", response)
             res.render('confirm_email', {
-              email: email
+              email: email,
+              message: 'verify your account'
             })
           },
           (error) => {
@@ -312,7 +313,7 @@ app.get('/verify-email/:id', async (req, res) => {
 });
 
 app.post('/create-user/:id', async (req, res) => {
- 
+
   // receive credtials from set password page and set password for username
   const id = req.params.id
   const {cpassword, password} = req.body
@@ -345,6 +346,65 @@ app.get('/logout', (req, res) => {
   res.clearCookie('token')
   res.redirect('/auth')
 })
+
+
+app.get('/forgot', (req, res) => {
+  res.sendFile('/views/forgotpass.html', { root: __dirname })
+})
+
+app.post('/change-password', async (req, res)=>{
+  const email = req.body.email
+
+  const user = await Users.findOne({email: email})
+
+  if( user !== null){
+    
+    const link = `${process.env.APP_URL}/change-password/${email}`
+    
+    changePaas(username, email, link)
+      .then(
+        (response) => {
+          console.log(response)
+          res.render('confirm_email', {
+            email: email,
+            message: 'reset your password'
+          })
+        },
+        (error) => {
+          console.log("err", error)
+          res.send('There has been an error. Please try again')
+        }
+      )
+    // res.send('found user')
+  }else{
+    res.send('could not find user')
+  }
+
+})
+
+app.get('/change-password/:email', (req, res)=>{
+  const email = req.params.email
+  res.render('changepass',{
+    email: email
+  })
+})
+
+app.post('/reset/:email', async(req, res)=>{
+  const {password, cpassword} = req.body
+  const email = req.params.email
+
+  const user = await Users.findOne({email: email})
+  user.password = password
+  
+  user.save().then(
+    (response)=>{
+      console.log(response)
+      res.render('reset-success')
+    }
+  )
+
+})
+
 
 
 
