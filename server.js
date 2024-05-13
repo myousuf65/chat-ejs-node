@@ -312,8 +312,7 @@ app.get('/verify-email/:id', async (req, res) => {
 });
 
 app.post('/create-user/:id', async (req, res) => {
-
-
+ 
   // receive credtials from set password page and set password for username
   const id = req.params.id
   const {cpassword, password} = req.body
@@ -323,37 +322,28 @@ app.post('/create-user/:id', async (req, res) => {
   if(cpassword === password){
     const user = await Users.findById(id)
     user.password = password
-    const updatedUser = await user.save()
-    console.log(updatedUser)
-    res.redirect('/auth')
+    user.save()
+      .then(
+        response =>{
+          const token = createJWT({
+            username: response.username,
+            email: response.email
+          })
+
+          // console.log(token)
+          res.cookie('token',token )
+          res.redirect("/")
+
+        }
+      )    
   }else{
-    console.log('pass not macth')
+    console.log('pass not match')
   }
-  // find that user and set password for that user
-  // const user = await Users.create({
-  //   username: username,
-  //   password: password,
-  //   email: email,
-  //   friends: []
-  // })
-  //   .then(user => {
-  //
-  //     const token = createJWT({
-  //       username: user.username,
-  //       email: user.email
-  //     })
-  //
-  //     res.cookie('token', token)
-  //     return res.redirect('/')
-  //
-  //   })
 })
 
 app.get('/logout', (req, res) => {
-
   res.clearCookie('token')
   res.redirect('/auth')
-
 })
 
 
