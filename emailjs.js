@@ -32,8 +32,5 @@ export function sendEmail(){
       },
     );
 }
-
-
-
 emailjs.init(options)
 sendEmail()

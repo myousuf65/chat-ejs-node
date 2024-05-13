@@ -1,4 +1,4 @@
-import http from "http"
+import http, { request } from "http"
 import { WebSocketServer } from "ws";
 import url from "url"
 import express, { response } from "express"
@@ -118,7 +118,11 @@ app.get("/", checkLogin, async (req, res) => {
     const friends = []
     for (const friend of allFriends['friends']) {
       const fName = await Users.findById(friend['_id'])
-      friends.push(fName['username'])
+      if(fName !== null){
+        friends.push(fName['username'])
+      }else{
+        continue;
+      }
     }
 
     return friends
@@ -222,8 +226,9 @@ app.post('/signin', async (req, res) => {
       username: user.username,
       email: user.email
     })
-
-    res.cookie('token', token)
+   
+    console.log(token)
+    res.cookie('token',token )
     res.redirect("/")
   } else {
 
@@ -283,57 +288,65 @@ app.post('/signup', async (req, res) => {
     })
 })
 
-// app.get('/verify-email/:id', async (req, res) => {
-//
-//   // find user by id 
-//   const user = await Users.findById(req.params.id)
-//
-//   console.log(user)
-//
-// })
+
 app.get('/verify-email/:id', async (req, res) => {
+  try {
+    const id = req.params.id;
+    console.log(typeof(id), id);
 
-  try{  
-    const user = await Users.findOne({_id: req.params.id})
+    const user = await Users.findById(id);
+    if (!user) {
+      // Handle case where no user is found
+      return res.status(404).send("User not found");
+    }
 
-    // Log the user object to the console
-    console.log(user);
-    res.render('password',{
-      email: user.email
-    })
-  }catch(err){
-    console.log(err)
+    res.render('password', {
+      email: user.email,
+      id: user.id
+    });
+  } catch (error) {
+    // Handle any other errors
+    // console.error("Error fetching user:", error);
+    res.status(500).send("Internal Server Error");
   }
-
 });
-
-
 
 app.post('/create-user/:id', async (req, res) => {
 
 
   // receive credtials from set password page and set password for username
+  const id = req.params.id
+  const {cpassword, password} = req.body
 
+  console.log({cpassword, password})
 
-
+  if(cpassword === password){
+    const user = await Users.findById(id)
+    user.password = password
+    const updatedUser = await user.save()
+    console.log(updatedUser)
+    res.redirect('/auth')
+  }else{
+    console.log('pass not macth')
+  }
   // find that user and set password for that user
-  const user = await Users.create({
-    username: username,
-    password: password,
-    email: email,
-    friends: []
-  })
-    .then(user => {
-
-      const token = createJWT({
-        username: user.username,
-        email: user.email
-      })
-
-      res.cookie('token', token)
-      return res.redirect('/')
-
-    })
+  // const user = await Users.create({
+  //   username: username,
+  //   password: password,
+  //   email: email,
+  //   friends: []
+  // })
+  //   .then(user => {
+  //
+  //     const token = createJWT({
+  //       username: user.username,
+  //       email: user.email
+  //     })
+  //
+  //     res.cookie('token', token)
+  //     return res.redirect('/')
+  //
+  //   })
 })
 
 app.get('/logout', (req, res) => {
