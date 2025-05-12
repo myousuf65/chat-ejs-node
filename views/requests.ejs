@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Follow Requests</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+
+        h1 {
+            color: #333;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .request-list {
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            padding: 20px;
+        }
+
+        .request-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px 0;
+            border-bottom: 1px solid #eee;
+        }
+
+        .request-item:last-child {
+            border-bottom: none;
+        }
+
+        .request-username {
+            font-weight: bold;
+            font-size: 18px;
+        }
+
+        .request-actions {
+            display: flex;
+            gap: 10px;
+        }
+
+        .btn {
+            padding: 8px 15px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: background-color 0.2s;
+        }
+
+        .btn-approve {
+            background-color: #4CAF50;
+            color: white;
+        }
+
+        .btn-approve:hover {
+            background-color: #3e8e41;
+        }
+
+        .btn-delete {
+            background-color: #f44336;
+            color: white;
+        }
+
+        .btn-delete:hover {
+            background-color: #d32f2f;
+        }
+
+        .no-requests {
+            text-align: center;
+            color: #666;
+            padding: 20px;
+        }
+
+        .notification {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 15px 20px;
+            border-radius: 4px;
+            color: white;
+            font-weight: bold;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+            z-index: 1000;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+
+        .notification.success {
+            background-color: #4CAF50;
+            opacity: 1;
+        }
+
+        .notification.error {
+            background-color: #f44336;
+            opacity: 1;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>Follow Requests</h1>
+
+    <div class="request-list">
+        <% if (requests.length> 0) { %>
+            <% requests.forEach(function(request) { %>
+                <div class="request-item">
+                    <span class="request-username">
+                        <%= request.username %>
+                    </span>
+                    <div class="request-actions">
+                        <button class="btn btn-approve" data-id="<%- request.username %>" data-action="approve"
+                            aria-label="Approve request from <%= request.username %>">
+                            Approve
+                        </button>
+                        <button class="btn btn-delete" data-id="<%- request.username %>" data-action="delete"
+                            aria-label="Delete request from <%= request.username %>">
+                            Delete
+                        </button>
+                    </div>
+                </div>
+                <% }); %>
+                    <% } else { %>
+                        <div class="no-requests">You have no pending follow requests.</div>
+                        <% } %>
+    </div>
+
+
+    <script>
+        function showNotification(message, isSuccess) {
+            const notification = document.createElement('div');
+            notification.className = `notification ${isSuccess ? 'success' : 'error'}`;
+            notification.textContent = message;
+            document.body.appendChild(notification);
+
+            setTimeout(() => {
+                notification.style.opacity = '0';
+                setTimeout(() => notification.remove(), 300);
+            }, 3000);
+        }
+
+        function updateRequestsList(requests) {
+            const requestList = document.querySelector('.request-list');
+
+            if (requests.length === 0) {
+                requestList.innerHTML = '<div class="no-requests">You have no pending follow requests.</div>';
+                return;
+            }
+
+            let html = '';
+            requests.forEach(request => {
+                html += `
+                <div class="request-item">
+                    <span class="request-username">
+                        ${request.username}
+                    </span>
+                    <div class="request-actions">
+                        <button class="btn btn-approve" data-id="${request.username}" data-action="approve"
+                            aria-label="Approve request from ${request.username}">
+                            Approve
+                        </button>
+                        <button class="btn btn-delete" data-id="${request.username}" data-action="delete"
+                            aria-label="Delete request from ${request.username}">
+                            Delete
+                        </button>
+                    </div>
+                </div>
+            `;
+            });
+
+            requestList.innerHTML = html;
+            attachEventListeners();
+        }
+
+        function attachEventListeners() {
+            document.querySelectorAll('.request-actions .btn').forEach(function (button) {
+                button.addEventListener('click', async function () {
+                    const userId = this.getAttribute('data-id');
+                    const action = this.getAttribute('data-action');
+                    const buttonText = this.textContent;
+
+                    // Disable button during processing
+                    this.disabled = true;
+                    this.textContent = 'Processing...';
+
+                    try {
+                        const response = await fetch(`/requests/${action}`, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                            },
+                            body: JSON.stringify({
+                                username: "<%- username %>",
+                                friend: userId
+                            }),
+                        });
+
+                        const result = await response.json();
+
+                        if (result.success) {
+                            showNotification(result.message, true);
+                            // Update the list with the new data
+                            updateRequestsList(result.requests);
+                        } else {
+                            showNotification(result.message || 'Action failed', false);
+                            this.disabled = false;
+                            this.textContent = buttonText;
+                        }
+                    } catch (error) {
+                        console.error('Error:', error);
+                        showNotification('An error occurred. Please try again.', false);
+                        this.disabled = false;
+                        this.textContent = buttonText;
+                    }
+                });
+            });
+        }
+
+        // Attach event listeners when page loads
+        document.addEventListener('DOMContentLoaded', attachEventListeners);
+    </script>
+</body>
+
+</html>

@@ -1,174 +1,157 @@
 <!DOCTYPE html>
 <html lang="en">
 
-  <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Chat App</title>
-    <link href="/css/styles.css" rel="stylesheet">
+<head>
+	<meta charset="UTF-8" />
+	<meta name="viewport" content="width=device-width, initial-scale=1" />
+	<title>Chat App</title>
+	<link href="/css/styles.css" rel="stylesheet" />
+</head>
 
-  </head>
+<body>
+	<div class="app-layout">
+		<nav>
+			<div class="left-nav">
+				<h1>Chat App</h1>
+			</div>
 
-  <body>
+			<div class="right-nav">
+				<ul>
+					<li>
+						<a class="links" href="/all-members"> Browse All Members </a>
+					</li>
+					<li>
+						<a class="links" href="/direct"> Browse All Groups </a>
+					</li>
+					<li>
+						<a class="links" href="/requests?user=<%=username%>"> View Requests</a>
+					</li>
+					<li class="links">
+						<%= username %>
+					</li>
+				</ul>
 
-    <div class='app-layout'>
+				<button class="logout" onclick="logout()">Logout</button>
+			</div>
+		</nav>
 
-      <nav>
-        <div class="left-nav">
-          <h1>Chat App</h1>
-        </div>
+		<div class="bottom-container">
+			<div class="nav-bar">
+				<ul>
+					<% friends.forEach((friend)=>{ %>
+						<li class="friends">
+							<button onclick="active_friend('<%= friend %>')" class="friends">
+								<%= friend %>
+							</button>
+						</li>
+						<% })%>
+				</ul>
+			</div>
 
-        <div class="right-nav">
-          <ul>
-            <li>
-              <a class='links' href="/all-members">
-                Browse All Members
-              </a>
-            </li>
-            <li>
-              <a class='links' href="/direct">
-                Browse All Groups
-              </a>
-            </li>
-            <li class="links">
-              <%= username %>
-            </li>
-          </ul>
+			<div class="content">
+				<main class="main-content"></main>
+			</div>
+		</div>
+	</div>
 
-          <button class='logout' onclick='logout()'>Logout</button>
-        </div>
-      </nav>
+	<script>
+		let ws;
 
-      <div class="bottom-container">
-        <div class="nav-bar">
-          <ul>
-            <% friends.forEach((friend)=>{ %>
-            <li class='friends'>
-              <button onclick="active_friend('<%= friend %>')" class='friends'><%= friend %></button>
-            </li>
-            <% })%>
-          </ul>
-        </div>
+		window.onload = function () {
+			let username = "<%= username %>";
+			console.log(username);
 
-        <div class="content">
-          <main class="main-content">
+			ws = new WebSocket(`ws://localhost:8000/?username=${username}`);
 
-          </main>
-        </div>
-      </div>
-    </div>
+			ws.onopen = function (event) {
+				alert("connection successful");
+			};
 
+			ws.addEventListener("message", (event) => {
+				const payload = JSON.parse(event.data);
+				console.log("item", localStorage.getItem("active"));
+				console.log("from", payload["from"]);
 
+				console.log();
+				if (localStorage.getItem("active") == payload["from"]) {
+					const wi = document.querySelector("#chat-window");
+					console.log(wi);
 
-    <script>
+					const div = document.createElement("div");
+					const motherDiv = document.createElement("div");
 
-    let ws;
+					div.className = "message-recieve";
+					motherDiv.className = "mother-div";
 
-    window.onload = function(){
+					div.innerHTML = payload["content"];
+					motherDiv.appendChild(div);
+					wi.appendChild(motherDiv);
 
-      let username = '<%= username %>'
-      console.log(username)
+					let _div = document.getElementById("chat-window");
+					_div.scrollTop = div.scrollHeight;
+				}
+			});
+		};
 
-      ws = new WebSocket(`ws://localhost:8080/?username=${username}`)
+		function active_friend(friend) {
+			localStorage.setItem("active", friend);
+			console.log("active : ", localStorage.getItem("active"));
 
-      ws.onopen = function(event){
-        alert('connection successful')
-      }
+			fetch("http://localhost:9999/fetch-chat-history", {
+				method: "POST",
+				headers: {
+					"Content-Type": "application/json",
+				},
+				body: JSON.stringify({
+					to: friend,
+					from: "<%= username %>",
+				}),
+			})
+				.then((res) => res.text())
+				.then((html) => {
+					document.querySelector(".main-content").innerHTML = html;
+					let div = document.getElementById("chat-window");
+					div.scrollTop = div.scrollHeight;
+				});
+		}
 
+		function send_message() {
+			// const arr = document.cookie
+			// const array = arr.split("=");
+			// let username = array[1]
 
-      ws.addEventListener("message",(event)=>{
+			let username = "<%= username %>";
 
-        const payload = JSON.parse(event.data)
-        console.log('item' , localStorage.getItem('active'))
-        console.log('from', payload['from'])
+			// const username = getCookie('username')
+			let message = document.querySelector("#chat-input").value;
+			let receiver = localStorage.getItem("active");
 
-        console.log()
-        if(localStorage.getItem('active') == payload['from']){
+			const payload = {
+				to: receiver,
+				from: username,
+				messageType: "DM",
+				content: message,
+			};
 
-          const wi = document.querySelector('#chat-window')
-          console.log(wi)
+			const wi = document.querySelector("#chat-window");
+			const motherDiv = document.createElement("div");
+			const div = document.createElement("div");
 
-          const div = document.createElement('div')
-          const motherDiv = document.createElement('div')
+			div.className = "message";
+			motherDiv.className = "mother-div";
 
-          div.className = 'message-recieve'
-          motherDiv.className = 'mother-div'
+			div.innerHTML = message;
+			motherDiv.appendChild(div);
+			wi.appendChild(motherDiv);
 
-          div.innerHTML = payload['content']
-          motherDiv.appendChild(div)
-          wi.appendChild(motherDiv)
+			// console.log(ws, payload)
+			ws.send(JSON.stringify(payload));
+		}
 
-          let _div = document.getElementById('chat-window')
-          _div.scrollTop = div.scrollHeight;
-        }
-
-      })
-    }
-
-
-    function active_friend(friend){
-      localStorage.setItem('active', friend)
-      console.log('active : ', localStorage.getItem('active'))
-
-      fetch('http://localhost:9999/fetch-chat-history',{
-        method: 'POST',
-        headers : {
-          'Content-Type' : 'application/json',
-        }, 
-        body : JSON.stringify({
-          to: friend,
-          from: '<%= username %>'
-        })
-      })
-        .then(res => res.text())
-        .then(html =>{
-          document.querySelector('.main-content').innerHTML = html
-          let div = document.getElementById('chat-window')
-          div.scrollTop = div.scrollHeight;
-        })
-
-    }
-
-    function send_message() {
-
-      // const arr = document.cookie
-      // const array = arr.split("=");
-      // let username = array[1]
-
-      let username = '<%= username %>'
-
-      // const username = getCookie('username')
-      let message = document.querySelector("#chat-input").value;
-      let receiver = localStorage.getItem('active');
-
-      const payload = {
-        to: receiver,
-        from: username,
-        messageType: "DM",
-        content: message,
-      };
-
-      const wi = document.querySelector('#chat-window')
-      const motherDiv = document.createElement('div')
-      const div = document.createElement('div')
-
-      div.className = 'message'
-      motherDiv.className = 'mother-div'
-
-
-      div.innerHTML = message
-      motherDiv.appendChild(div)
-      wi.appendChild(motherDiv)
-
-      // console.log(ws, payload)
-      ws.send(JSON.stringify(payload))
-    }
-
-    function logout(){
-      fetch('/logout').then(res => window.location.reload())
-    }
-
-    </script>
-  </body>
+		function logout() {
+			fetch("/logout").then((res) => window.location.reload());
+		}
+	</script>
+</body>
 
 </html>
