@@ -1,13 +1,29 @@
-http server for ws running on port 8080
-express server running on port 9999
+
+.env file template
+```
+EXPRESS_PORT=
+WEBSOCKET_PORT=8000
+EMAILJS_PRIVATE_KEY=
+EMAILJS_PUBLIC_KEY=
+EMAILJS_TEMPLATE_ID=
+EMAILJS_SERVICE_ID=
+SECRET_KEY=
+APP_URL=http://localhost:9999
+MONGODB_ULI=
+```
 
 
-todo:
-1. friend request
-    - add the user who wants to add them as
-    friend to the users.requests array
-    - user has a page to view all requests
-    - on approve add that user to this users friends list
+### start server 
+```
+node server.js
+```
 
-2. should only be able to message them
-    if both have each other in friends list
+
+### features:
+1. create account
+2. verfiy account with email 
+3. reset password with email
+4. friend request
+5. direct messaging
+6. create groups
+7. group messaging 
