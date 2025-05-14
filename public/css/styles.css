@@ -5,7 +5,7 @@
 }
 
 body{
-  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  font-family: Arial, Helvetica, sans-serif;
   background-color: #f0f2f5;
 }
 
@@ -15,14 +15,12 @@ body{
   margin: 30px auto;
   display: flex;
   padding: 10px;
-
 }
 
 #right-container{
   width: 100%;
   /* background-color: red; */
 }
-
 
 #chat-window {
   width: 100%;
@@ -41,7 +39,6 @@ body{
   display: flex;
   justify-content: center;
   align-items: center;
-
 }
 
 #chat-input {
@@ -92,8 +89,6 @@ div.message {
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
 }
 
-
-
 .message-recieve{
   width: fit-content;
   float: left;
@@ -106,50 +101,6 @@ div.message {
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
 }
 
-
-nav{
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 10px 20px;
-  background-color: #ffffff;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-}
-
-
-.left-nav{
-  width: 20%;
-  padding: 2px;
-}
-
-.right-nav{
-  width: 60%;
-  display: flex;
-  justify-content: space-around;
-
-}
-
-ul{
-  list-style: none;
-  display: flex;
-}
-
-
-a{
-  text-decoration: none;
-  font-size: 1em;
-  border-radius: 6px;
-  color: #1877f2;
-  padding: 8px 12px;
-  background-color: transparent;
-  transition: all 0.2s ease;
-}
-
-a:hover{
-  background-color: #f0f2f5;
-  color: #1877f2;
-}
-
 .bottom-container{
   display: flex;
   flex-direction: row;
@@ -158,8 +109,6 @@ a:hover{
   padding: 20px;
   gap: 20px;
 }
-
-
 
 .nav-bar{
   margin-right: 5px;
@@ -182,15 +131,9 @@ a:hover{
   height: 100%;
 }
 
-li{
-  margin-right: 10px;
-
-}
-
 .content{
   width: 60%;
 }
-
 
 .friends{
   width: 90%;
@@ -206,21 +149,4 @@ li{
 
 .friends:hover {
   background-color: #f0f2f5;
-}
-
-.logout{
-  padding: 8px 16px;
-  font-size: 15px;
-  border-radius: 6px;
-  border: 0;
-  font-weight: 600;
-  background-color: #e4e6eb;
-  color: #050505;
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.logout:hover{
-  background-color: #1877f2;
-  color: white;
 }

@@ -259,13 +259,18 @@ app.post("/add-friend", checkLogin, async (req, res) => {
 
   const friend = await Users.findOne({ username: friend_name });
 
-  const user = await Users.findOne({ username: username }, { requests: 1 });
+  const user = await Users.findOne({ username: username }, { requests: 1,friends:1 });
 
-  const alreadyRequested = user.requests.some((fr) => fr.equals(friend._id));
+  const alreadyRequested = friend.requests.some((fr) => fr.equals(user._id));
+  const alreadyFriends = user.friends.some((fr) => fr.equals(friend._id));
 
-  if (alreadyRequested) {
+  if (alreadyFriends) {
+    res.status(400).send({ message: "You are already friends" });
+  } 
+  else if (alreadyRequested) {
     res.status(400).send({ message: "You have made request already" });
-  } else {
+  } 
+  else  {
     friend.requests.push(user._id);
     await friend.save();
     res.status(200).send({ message: "Request sent successfully" });

@@ -1,0 +1,59 @@
+/* Navigation Bar Styles */
+nav {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px;
+  box-shadow: rgba(100, 100, 111, 0.2) 0px 7px 29px 0px;
+  background-color: #ffffff;
+}
+
+.left-nav {
+  width: 20%;
+  border: 1px solid red;
+  padding: 2px;
+}
+
+.right-nav {
+  width: 80%;
+  display: flex;
+  border: 1px solid red;
+  justify-content: space-between;
+}
+
+.right-nav ul {
+  list-style: none;
+  display: flex;
+}
+
+.right-nav li {
+  margin-right: 10px;
+}
+
+.right-nav a {
+  text-decoration: none;
+  font-size: 1em;
+  border-radius: 5px;
+  color: white;
+  padding: 5px;
+  background-color: black;
+}
+
+.right-nav a:hover {
+  background-color: white;
+  color: black;
+}
+
+.logout {
+  padding: 3px 15px;
+  font-size: 17px;
+  border-radius: 5px;
+  border: 0;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+.logout:hover {
+  background-color: black;
+  color: white;
+} 
