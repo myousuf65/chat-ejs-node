@@ -10,14 +10,14 @@ nav {
 
 .left-nav {
   width: 20%;
-  border: 1px solid red;
+  /* border: 1px solid red; */
   padding: 2px;
 }
 
 .right-nav {
   width: 80%;
   display: flex;
-  border: 1px solid red;
+  /* border: 1px solid red; */
   justify-content: space-between;
 }
 
@@ -57,3 +57,8 @@ nav {
   background-color: black;
   color: white;
 } 
+
+a {
+  text-decoration: none;
+  color: black;
+}

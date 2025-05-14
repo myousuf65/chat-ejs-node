@@ -41,7 +41,7 @@
 			ws = new WebSocket(`ws://localhost:8000/?username=${username}`);
 
 			ws.onopen = function (event) {
-				alert("connection successful");
+				console.log("connection successful");
 			};
 
 			ws.addEventListener("message", (event) => {

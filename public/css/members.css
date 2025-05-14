@@ -81,7 +81,7 @@ body{
 }
 
 
-nav{
+/* nav{
   display: flex;
   justify-content:space-between;
   align-items: center;
@@ -136,7 +136,7 @@ li{
 .logout:hover{
   background-color: black;
   color: white;
-}
+} */
 
 .notification {
   padding: 10px;
