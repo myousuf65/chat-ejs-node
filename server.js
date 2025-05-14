@@ -122,9 +122,10 @@ wsServer.on("connection", async (connection, request) => {
               timestamp: new Date()
             };
 
-            // Broadcast to all in room
+            // Broadcast to all in room except sender
             room.forEach(client => {
-              if (client.readyState === WebSocket.OPEN) {
+              // Skip sending to the sender's connection
+              if (client !== connection && client.readyState === WebSocket.OPEN) {
                 client.send(JSON.stringify(groupPayload));
               }
             });
