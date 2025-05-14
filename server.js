@@ -1,7 +1,7 @@
-import http, { request } from "http";
-import { WebSocketServer } from "ws";
+import http from "http";
+import { WebSocketServer, WebSocket } from "ws";
 import url from "url";
-import express, { response } from "express";
+import express from "express";
 import mongoose from "mongoose";
 import bodyParser from "body-parser";
 import Members from "./Members.js";
@@ -24,7 +24,7 @@ const __dirname = dirname(__filename);
 
 dotenv.config();
 
-//express boiler plate
+// Express setup
 const app = express();
 app.set("view engine", "ejs");
 app.set("views", "./views");
@@ -34,11 +34,12 @@ app.use(bodyParser.json());
 app.use(cookieParser());
 app.use(cors());
 
-//initialization http server
-const server = http.createServer();
+// HTTP server setup
+const server = http.createServer(app); // Changed to use express app
 const PORT = 8080;
 let username = "";
 
+// WebSocket server setup
 const wsServer = new WebSocketServer({ noServer: true });
 
 const getUsername = (request) => {
@@ -59,60 +60,159 @@ server.on("upgrade", (request, socket, head) => {
   });
 });
 
-wsServer.on("connection", async (connection) => {
-  // creating connection instance for user
-  const m = new Members(username, connection);
+// Store active rooms
+const activeRooms = new Map();
 
-  console.log("New client connected", username, "\n");
+wsServer.on("connection", async (connection, request) => {
+  try {
+    username = getUsername(request);
+    console.log("New client connected", username);
 
-  connection.on("message", async (message) => {
-    const _message = JSON.parse(message);
-    console.log(_message);
-    
-    if (_message.messageType === "DM") {
-      const receiverConn = Members.findByUsername(_message.to);
+    // Create new connection instance for user
+    const m = new Members(username, connection);
 
-      const payload = {
-        from: _message.from,
-        to: _message.to,
-        messageType: _message.messageType,
-        content: _message.content,
-      };
+    connection.on("message", async (message) => {
+      try {
+        const _message = JSON.parse(message);
+        console.log("Received message:", _message);
 
-      const result = await Messages.create({
-        from: _message.from,
-        to: _message.to,
-        content: _message.content,
+        if (_message.messageType === "DM") {
+          const receiverConn = Members.findByUsername(_message.to);
+          console.log("Found receiver connection:", !!receiverConn);
+
+          const payload = {
+            from: _message.from,
+            to: _message.to,
+            messageType: _message.messageType,
+            content: _message.content,
+            timestamp: new Date()
+          };
+
+          // Save message to database
+          await Messages.create({
+            from: _message.from,
+            to: _message.to,
+            content: _message.content,
+          });
+
+          // Send to receiver if online
+          if (receiverConn && receiverConn.connection.readyState === WebSocket.OPEN) {
+            receiverConn.connection.send(JSON.stringify(payload));
+          }
+        } else if (_message.type === "GROUP") {
+          const roomName = _message.room;
+          const room = activeRooms.get(roomName);
+         
+          console.log("Room message - roomName:", roomName);
+          console.log("Room instance:", room);
+
+          if (room) {
+            // Save message to database
+            await GroupMessages.create({
+              room: roomName,
+              from: _message.from,
+              content: _message.content,
+            });
+            
+            const groupPayload = {
+              type: 'GROUP',
+              room: roomName,
+              from: _message.from,
+              content: _message.content,
+              timestamp: new Date()
+            };
+
+            // Broadcast to all in room
+            room.forEach(client => {
+              if (client.readyState === WebSocket.OPEN) {
+                client.send(JSON.stringify(groupPayload));
+              }
+            });
+          }
+        }
+      } catch (error) {
+        console.error("Error processing message:", error);
+      }
+    });
+
+    // Handle joining rooms when user connects
+    const userGroups = await Groups.find({ members: username });
+    userGroups.forEach(group => {
+      if (!activeRooms.has(group.name)) {
+        activeRooms.set(group.name, new Set());
+      }
+      activeRooms.get(group.name).add(connection);
+    });
+
+    connection.on("close", () => {
+      console.log("Client disconnected:", username);
+      Members.remove(username);
+      
+      // Remove from all rooms
+      activeRooms.forEach((clients, roomName) => {
+        if (clients.has(connection)) {
+          clients.delete(connection);
+          if (clients.size === 0) {
+            activeRooms.delete(roomName);
+          }
+        }
       });
+    });
 
-      if (receiverConn !== undefined) {
-        receiverConn.connection.send(JSON.stringify(payload));
-      }
-    } else if (_message.messageType === "GROUP") {
-      const room = Room.getRoom(_message.room);
-      if (room) {
-        // Store group message
-        await GroupMessages.create({
-          room: _message.room,
-          from: _message.from,
-          content: _message.content
-        });
-        
-        // Broadcast to all room members
-        room.broadcast(_message.content, _message.from);
-      }
+    connection.on("error", (error) => {
+      console.error("WebSocket error for user", username, ":", error);
+    });
+  } catch (error) {
+    console.error("Error in connection handler:", error);
+    connection.terminate();
+  }
+});
+
+// Join room endpoint
+app.post("/groups/:room/join", checkLogin, async (req, res) => {
+  const roomName = req.params.room;
+  const username = req.username;
+
+  try {
+    const group = await Groups.findOne({ name: roomName });
+    if (!group) {
+      return res.status(404).json({ message: "Group not found" });
     }
-  });
 
-  connection.on("close", () => {
-    // remove from the active instances list
-    console.log("Client disconnected");
-  });
+    // Add user to group if not already a member
+    if (!group.members.includes(username)) {
+      group.members.push(username);
+      await group.save();
+    }
 
-  connection.on("error", (error) => {
-    // clients.delete(connection);
-    console.error("WebSocket error:", error);
-  });
+    // Add user's connection to the room if they're connected
+    const userConnection = Members.findByUsername(username);
+    if (userConnection) {
+      if (!activeRooms.has(roomName)) {
+        activeRooms.set(roomName, new Set());
+      }
+      activeRooms.get(roomName).add(userConnection.connection);
+    }
+
+    res.json({ success: true, room: roomName });
+  } catch (error) {
+    console.error("Error joining room:", error);
+    res.status(500).json({ message: "Internal server error" });
+  }
+});
+
+// Get room messages
+app.get("/groups/:room/messages", checkLogin, async (req, res) => {
+  try {
+    const messages = await GroupMessages.find({ room: req.params.room })
+      .sort({ createdAt: 1 })
+      .populate('from', 'username');
+    
+    res.json(messages);
+  } catch (error) {
+    console.error("Error fetching messages:", error);
+    res.status(500).json({ message: "Internal server error" });
+  }
 });
 
 app.get("/", checkLogin, async (req, res) => {
@@ -525,12 +625,12 @@ app.post("/reset/:email", async (req, res) => {
 
 app.get("/create-group", checkLogin, async (req, res) => {
   res.render("create-group", {
-    username: req.username
+    username: req.username,
   });
 });
 
 app.post("/groups/create", checkLogin, async (req, res) => {
-  const { name, description, members } = req.body;
+  const { name, description } = req.body;
   const creator = req.username;
 
   try {
@@ -540,28 +640,22 @@ app.post("/groups/create", checkLogin, async (req, res) => {
       return res.status(400).json({ message: "Group name already exists" });
     }
 
-    // Create group in database
+    // Create group in database with creator as first member
     const group = await Groups.create({
       name,
       description,
       creator,
-      members
+      members: [creator]
     });
 
-    // Create room instance
-    const room = Room.createRoom(name, creator);
-    if (!room) {
-      await Groups.deleteOne({ _id: group._id });
-      return res.status(400).json({ message: "Failed to create group room" });
+    // Initialize room in activeRooms
+    activeRooms.set(name, new Set());
+    
+    // Add creator's connection to room if they're online
+    const creatorConnection = Members.findByUsername(creator);
+    if (creatorConnection) {
+      activeRooms.get(name).add(creatorConnection.connection);
     }
-
-    // Add all members to the room
-    members.forEach(member => {
-      const wsConnection = Members.findByUsername(member)?.connection;
-      if (wsConnection) {
-        room.add(wsConnection, member);
-      }
-    });
 
     res.json({ message: "Group created successfully", group: name });
   } catch (error) {
@@ -573,7 +667,7 @@ app.post("/groups/create", checkLogin, async (req, res) => {
 app.get("/groups/list", checkLogin, async (req, res) => {
   try {
     const groups = await Groups.find({});
-    res.json({ rooms: groups.map(g => g.name) });
+    res.json({ rooms: groups.map((g) => g.name) });
   } catch (error) {
     console.error("Error listing groups:", error);
     res.status(500).json({ message: "Internal server error" });
@@ -593,50 +687,9 @@ app.get("/groups/:room/details", checkLogin, async (req, res) => {
   }
 });
 
-app.post("/groups/join", checkLogin, async (req, res) => {
-  const { room } = req.body;
-  const username = req.username;
-
-  try {
-    const group = await Groups.findOne({ name: room });
-    if (!group) {
-      return res.status(404).json({ message: "Group not found" });
-    }
-
-    const roomInstance = Room.getRoom(room);
-    if (!roomInstance) {
-      return res.status(404).json({ message: "Room not found" });
-    }
-
-    const wsConnection = Members.findByUsername(username)?.connection;
-    if (wsConnection) {
-      roomInstance.add(wsConnection, username);
-      res.json({ message: "Joined room successfully", room });
-    } else {
-      res.status(400).json({ message: "User not connected" });
-    }
-  } catch (error) {
-    console.error("Error joining group:", error);
-    res.status(500).json({ message: "Internal server error" });
-  }
-});
-
-app.post("/groups/leave", checkLogin, async (req, res) => {
-  const { room } = req.body;
-  const username = req.username;
-
-  const roomInstance = Room.getRoom(room);
-  if (roomInstance) {
-    roomInstance.remove(username);
-    res.json({ message: "Left room successfully" });
-  } else {
-    res.status(404).json({ message: "Room not found" });
-  }
-});
-
 app.get("/groups", checkLogin, async (req, res) => {
   res.render("groups", {
-    username: req.username
+    username: req.username,
   });
 });
 
@@ -645,5 +698,5 @@ app.listen(process.env.EXPRESS_PORT, "0.0.0.0", () => {
 });
 
 server.listen(process.env.WEBSOCKET_PORT, "0.0.0.0", () => {
-  console.log(`Server listening on port ${process.env.WEBSOCKET_PORT}`);
+  console.log(`WebSocket server listening on port ${process.env.WEBSOCKET_PORT}`);
 });

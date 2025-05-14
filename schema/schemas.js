@@ -90,9 +90,10 @@ const groupSchema = new mongoose.Schema({
         type: String,
         required: true
     },
-    members: [{
-        type: String
-    }],
+    members: {
+        type: [String],
+        default: []
+    },
     createdAt: {
         type: Date,
         default: Date.now

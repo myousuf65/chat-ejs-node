@@ -1,61 +1,59 @@
-class Room {
-  static instances = new Map();
+export default class Room {
+  static rooms = new Map();
 
-  constructor(name, creator) {
-    this.name = name;
-    this.members = new Map();
-    this.creator = creator;
-    Room.instances.set(name, this);
-  }
-
-  add(connection, username) {
-    this.members.set(username, connection);
-  }
-
-  remove(username) {
-    this.members.delete(username);
-    if (this.members.size === 0) {
-      Room.instances.delete(this.name);
+  static createRoom(name, creator) {
+    if (this.rooms.has(name)) {
+      return null;
     }
-  }
-
-  broadcast(message, sender) {
-    const payload = {
-      type: 'GROUP_MESSAGE',
-      room: this.name,
-      from: sender,
-      content: message,
-      timestamp: new Date()
-    };
-
-    this.members.forEach((connection, username) => {
-      if (username !== sender) { // Don't send back to sender
-        connection.send(JSON.stringify(payload));
-      }
+    
+    this.rooms.set(name, {
+      name,
+      creator,
+      clients: new Set()
     });
-  }
-
-  getMembers() {
-    return Array.from(this.members.keys());
+    
+    return this.rooms.get(name);
   }
 
   static getRoom(name) {
-    return Room.instances.get(name);
+    return this.rooms.get(name);
   }
 
-  static createRoom(name, creator) {
-    if (Room.instances.has(name)) {
-      return null; // Room already exists
+  static joinRoom(name, client) {
+    const room = this.rooms.get(name);
+    if (room) {
+      room.clients.add(client);
+      return true;
     }
-    return new Room(name, creator);
+    return false;
   }
 
-  static listRooms() {
-    return Array.from(Room.instances.keys());
+  static leaveRoom(name, client) {
+    const room = this.rooms.get(name);
+    if (room) {
+      room.clients.delete(client);
+      if (room.clients.size === 0) {
+        this.rooms.delete(name);
+      }
+      return true;
+    }
+    return false;
+  }
+
+  static broadcast(name, message, sender) {
+    const room = this.rooms.get(name);
+    if (room) {
+      room.clients.forEach(client => {
+        if (client.readyState === WebSocket.OPEN) {
+          client.send(JSON.stringify({
+            type: 'GROUP_MESSAGE',
+            room: name,
+            from: sender,
+            content: message,
+            timestamp: new Date()
+          }));
+        }
+      });
+    }
   }
 }
-
-export default Room;
-
-
-

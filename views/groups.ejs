@@ -137,6 +137,7 @@
         }
     </style>
 </head>
+
 <body>
     <nav>
         <div class="left-nav">
@@ -158,7 +159,6 @@
         <div class="groups-sidebar">
             <h2>All Groups</h2>
             <p style="color: #666; font-size: 0.9rem; margin: 0.5rem 0;">
-                Click on any group to join the conversation
             </p>
             <div class="groups-list" id="groupsList">
                 <!-- Groups will be populated here -->
@@ -171,7 +171,6 @@
         <div class="group-chat">
             <div class="chat-header">
                 <h2 id="currentGroupName">Select a Group</h2>
-                <div id="groupMembers"></div>
             </div>
             <div class="chat-messages" id="chatMessages">
                 <!-- Messages will be populated here -->
@@ -186,6 +185,8 @@
     <script>
         let ws;
         let currentGroup = null;
+        let reconnectAttempts = 0;
+        const maxReconnectAttempts = 50;
         const username = "<%= username %>";
 
         window.onload = function() {
@@ -194,15 +195,21 @@
         };
 
         function connectWebSocket() {
+            const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+            const host = window.location.host;
             ws = new WebSocket(`ws://localhost:8000/?username=${username}`);
             
             ws.onopen = function() {
                 console.log('Connected to WebSocket');
+                reconnectAttempts = 0;
+                if (currentGroup) {
+                    joinRoom(currentGroup);
+                }
             };
 
             ws.onmessage = function(event) {
                 const message = JSON.parse(event.data);
-                if (message.type === 'GROUP_MESSAGE' && message.room === currentGroup) {
+                if (message.type === 'GROUP' && message.room === currentGroup) {
                     appendMessage(message);
                 }
             };
@@ -213,7 +220,15 @@
 
             ws.onclose = function() {
                 console.log('WebSocket connection closed');
-                setTimeout(connectWebSocket, 1000); // Reconnect after 1 second
+                if (reconnectAttempts < maxReconnectAttempts) {
+                    reconnectAttempts++;
+                    const timeout = Math.min(1000 * Math.pow(2, reconnectAttempts), 10000);
+                    console.log(`Attempting to reconnect in ${timeout/1000} seconds...`);
+                    setTimeout(connectWebSocket, timeout);
+                } else {
+                    console.log('Max reconnection attempts reached');
+                    alert('Connection lost. Please refresh the page.');
+                }
             };
         }
 
@@ -227,8 +242,11 @@
                 data.rooms.forEach(room => {
                     const div = document.createElement('div');
                     div.className = 'group-item';
+                    if (room === currentGroup) {
+                        div.classList.add('active');
+                    }
                     div.textContent = room;
-                    div.onclick = () => joinGroup(room);
+                    div.onclick = () => selectGroup(room);
                     groupsList.appendChild(div);
                 });
             } catch (error) {
@@ -236,74 +254,63 @@
             }
         }
 
-        async function createGroup() {
-            const nameInput = document.getElementById('newGroupName');
-            const name = nameInput.value.trim();
-            
-            if (!name) return;
-
+        async function selectGroup(room) {
             try {
-                const response = await fetch('/groups/create', {
+                // Join the room
+                const joinResponse = await fetch(`/groups/${room}/join`, {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ name })
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
                 });
-
-                if (response.ok) {
-                    nameInput.value = '';
-                    loadGroups();
-                    joinGroup(name);
+                
+                if (!joinResponse.ok) {
+                    throw new Error('Failed to join room');
                 }
-            } catch (error) {
-                console.error('Error creating group:', error);
-            }
-        }
-
-        async function joinGroup(room) {
-            try {
-                const response = await fetch('/groups/join', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ room })
+                
+                currentGroup = room;
+                document.getElementById('currentGroupName').textContent = room;
+                
+                // Update active group in sidebar
+                document.querySelectorAll('.group-item').forEach(item => {
+                    item.classList.remove('active');
+                    if (item.textContent === room) {
+                        item.classList.add('active');
+                    }
                 });
-
-                if (response.ok) {
-                    currentGroup = room;
-                    document.getElementById('currentGroupName').textContent = room;
-                    loadGroupMessages(room);
-                    
-                    // Update active group in sidebar
-                    document.querySelectorAll('.group-item').forEach(item => {
-                        item.classList.remove('active');
-                        if (item.textContent === room) {
-                            item.classList.add('active');
-                        }
-                    });
-                }
-            } catch (error) {
-                console.error('Error joining group:', error);
-            }
-        }
-
-        async function loadGroupMessages(room) {
-            try {
-                const response = await fetch(`/groups/${room}/messages`);
-                const data = await response.json();
+                
+                // Load previous messages
+                const messagesResponse = await fetch(`/groups/${room}/messages`);
+                const messages = await messagesResponse.json();
+                
                 const chatMessages = document.getElementById('chatMessages');
                 chatMessages.innerHTML = '';
                 
-                data.messages.forEach(message => {
+                messages.forEach(message => {
                     appendMessage({
-                        from: message.from,
+                        from: message.from.username,
                         content: message.content,
-                        timestamp: new Date(message.createdAt)
+                        timestamp: message.createdAt,
+                        room: room
                     });
                 });
-
-                chatMessages.scrollTop = chatMessages.scrollHeight;
+                
+                // Join room in WebSocket
+                if (ws.readyState === WebSocket.OPEN) {
+                    joinRoom(room);
+                }
             } catch (error) {
-                console.error('Error loading messages:', error);
+                console.error('Error selecting group:', error);
+                alert('Failed to join room. Please try again.');
             }
+        }
+
+        function joinRoom(room) {
+            ws.send(JSON.stringify({
+                type: 'JOIN_ROOM',
+                room: room,
+                username: username
+            }));
         }
 
         function appendMessage(message) {
@@ -314,6 +321,7 @@
             messageDiv.innerHTML = `
                 <div class="message-sender">${message.from}</div>
                 <div class="message-content">${message.content}</div>
+                <div class="message-time">${new Date(message.timestamp).toLocaleTimeString()}</div>
             `;
             
             chatMessages.appendChild(messageDiv);
@@ -327,20 +335,24 @@
             if (!content || !currentGroup) return;
 
             const message = {
-                messageType: 'GROUP',
+                type: 'GROUP',
                 room: currentGroup,
                 from: username,
                 content: content
             };
 
-            ws.send(JSON.stringify(message));
+            if (ws.readyState === WebSocket.OPEN) {
+                ws.send(JSON.stringify(message));
+            }
+            
             input.value = '';
 
             // Append own message immediately
             appendMessage({
                 from: username,
                 content: content,
-                timestamp: new Date()
+                timestamp: new Date(),
+                room: currentGroup
             });
         }
 
