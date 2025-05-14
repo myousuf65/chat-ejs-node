@@ -5,7 +5,7 @@ import express, { response } from "express";
 import mongoose from "mongoose";
 import bodyParser from "body-parser";
 import Members from "./Members.js";
-import { Users, Messages } from "./schema/schemas.js";
+import { Users, Messages, GroupMessages, Groups } from "./schema/schemas.js";
 import cookieParser from "cookie-parser";
 import dotenv from "dotenv";
 import cors from "cors";
@@ -13,6 +13,7 @@ import jwt from "jsonwebtoken";
 import { createJWT } from "./jwt.js";
 import { checkLogin } from "./middlewares/checkLogin.js";
 import { changePaas, sendEmail } from "./auth/emailjs.js";
+import Room from "./Rooms.js";
 
 // defining __dirname and __filename
 import { fileURLToPath } from "url";
@@ -67,6 +68,7 @@ wsServer.on("connection", async (connection) => {
   connection.on("message", async (message) => {
     const _message = JSON.parse(message);
     console.log(_message);
+    
     if (_message.messageType === "DM") {
       const receiverConn = Members.findByUsername(_message.to);
 
@@ -83,10 +85,21 @@ wsServer.on("connection", async (connection) => {
         content: _message.content,
       });
 
-      console.log(payload);
-
       if (receiverConn !== undefined) {
         receiverConn.connection.send(JSON.stringify(payload));
+      }
+    } else if (_message.messageType === "GROUP") {
+      const room = Room.getRoom(_message.room);
+      if (room) {
+        // Store group message
+        await GroupMessages.create({
+          room: _message.room,
+          from: _message.from,
+          content: _message.content
+        });
+        
+        // Broadcast to all room members
+        room.broadcast(_message.content, _message.from);
       }
     }
   });
@@ -507,6 +520,123 @@ app.post("/reset/:email", async (req, res) => {
   user.save().then((response) => {
     console.log(response);
     res.render("reset-success");
+  });
+});
+
+app.get("/create-group", checkLogin, async (req, res) => {
+  res.render("create-group", {
+    username: req.username
+  });
+});
+
+app.post("/groups/create", checkLogin, async (req, res) => {
+  const { name, description, members } = req.body;
+  const creator = req.username;
+
+  try {
+    // Check if group name already exists
+    const existingGroup = await Groups.findOne({ name });
+    if (existingGroup) {
+      return res.status(400).json({ message: "Group name already exists" });
+    }
+
+    // Create group in database
+    const group = await Groups.create({
+      name,
+      description,
+      creator,
+      members
+    });
+
+    // Create room instance
+    const room = Room.createRoom(name, creator);
+    if (!room) {
+      await Groups.deleteOne({ _id: group._id });
+      return res.status(400).json({ message: "Failed to create group room" });
+    }
+
+    // Add all members to the room
+    members.forEach(member => {
+      const wsConnection = Members.findByUsername(member)?.connection;
+      if (wsConnection) {
+        room.add(wsConnection, member);
+      }
+    });
+
+    res.json({ message: "Group created successfully", group: name });
+  } catch (error) {
+    console.error("Error creating group:", error);
+    res.status(500).json({ message: "Internal server error" });
+  }
+});
+
+app.get("/groups/list", checkLogin, async (req, res) => {
+  try {
+    const groups = await Groups.find({});
+    res.json({ rooms: groups.map(g => g.name) });
+  } catch (error) {
+    console.error("Error listing groups:", error);
+    res.status(500).json({ message: "Internal server error" });
+  }
+});
+
+app.get("/groups/:room/details", checkLogin, async (req, res) => {
+  try {
+    const group = await Groups.findOne({ name: req.params.room });
+    if (!group) {
+      return res.status(404).json({ message: "Group not found" });
+    }
+    res.json(group);
+  } catch (error) {
+    console.error("Error fetching group details:", error);
+    res.status(500).json({ message: "Internal server error" });
+  }
+});
+
+app.post("/groups/join", checkLogin, async (req, res) => {
+  const { room } = req.body;
+  const username = req.username;
+
+  try {
+    const group = await Groups.findOne({ name: room });
+    if (!group) {
+      return res.status(404).json({ message: "Group not found" });
+    }
+
+    const roomInstance = Room.getRoom(room);
+    if (!roomInstance) {
+      return res.status(404).json({ message: "Room not found" });
+    }
+
+    const wsConnection = Members.findByUsername(username)?.connection;
+    if (wsConnection) {
+      roomInstance.add(wsConnection, username);
+      res.json({ message: "Joined room successfully", room });
+    } else {
+      res.status(400).json({ message: "User not connected" });
+    }
+  } catch (error) {
+    console.error("Error joining group:", error);
+    res.status(500).json({ message: "Internal server error" });
+  }
+});
+
+app.post("/groups/leave", checkLogin, async (req, res) => {
+  const { room } = req.body;
+  const username = req.username;
+
+  const roomInstance = Room.getRoom(room);
+  if (roomInstance) {
+    roomInstance.remove(username);
+    res.json({ message: "Left room successfully" });
+  } else {
+    res.status(404).json({ message: "Room not found" });
+  }
+});
+
+app.get("/groups", checkLogin, async (req, res) => {
+  res.render("groups", {
+    username: req.username
   });
 });
 

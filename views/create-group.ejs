@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Create Group - Chat App</title>
+    <link href="/css/styles.css" rel="stylesheet" />
+    <style>
+        .create-group-container {
+            max-width: 800px;
+            margin: 2rem auto;
+            padding: 2rem;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 500;
+            color: #333;
+        }
+
+        .form-group input[type="text"],
+        .form-group textarea {
+            width: 100%;
+            padding: 0.75rem;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 1rem;
+        }
+
+        .form-group textarea {
+            min-height: 100px;
+            resize: vertical;
+        }
+
+        .members-container {
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            padding: 1rem;
+            margin-top: 0.5rem;
+        }
+
+        .members-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .member-chip {
+            background: #e9ecef;
+            padding: 0.25rem 0.75rem;
+            border-radius: 16px;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .member-chip button {
+            background: none;
+            border: none;
+            color: #dc3545;
+            cursor: pointer;
+            font-size: 1.2rem;
+            padding: 0;
+            line-height: 1;
+        }
+
+        .member-search {
+            position: relative;
+        }
+
+        .member-search input {
+            width: 100%;
+            padding: 0.75rem;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+
+        .search-results {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background: white;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            max-height: 200px;
+            overflow-y: auto;
+            z-index: 1000;
+        }
+
+        .search-result-item {
+            padding: 0.5rem 1rem;
+            cursor: pointer;
+        }
+
+        .search-result-item:hover {
+            background: #f8f9fa;
+        }
+
+        .btn-container {
+            display: flex;
+            gap: 1rem;
+            margin-top: 2rem;
+        }
+
+        .btn-primary {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 0.75rem 1.5rem;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 1rem;
+        }
+
+        .btn-secondary {
+            background: #6c757d;
+            color: white;
+            border: none;
+            padding: 0.75rem 1.5rem;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 1rem;
+        }
+
+        .btn-primary:hover {
+            background: #0056b3;
+        }
+
+        .btn-secondary:hover {
+            background: #545b62;
+        }
+
+        .error-message {
+            color: #dc3545;
+            margin-top: 0.25rem;
+            font-size: 0.875rem;
+        }
+    </style>
+</head>
+<body>
+    <nav>
+        <div class="left-nav">
+            <h1>Chat App</h1>
+        </div>
+
+        <div class="right-nav">
+            <ul>
+                <li><a class="links" href="/all-members">Browse All Members</a></li>
+                <li><a class="links" href="/groups">Group Chat</a></li>
+                <li><a class="links" href="/requests?user=<%=username%>">View Requests</a></li>
+                <li class="links"><%= username %></li>
+            </ul>
+            <button class="logout" onclick="logout()">Logout</button>
+        </div>
+    </nav>
+
+    <div class="create-group-container">
+        <h2>Create New Group</h2>
+        <form id="createGroupForm" onsubmit="handleSubmit(event)">
+            <div class="form-group">
+                <label for="groupName">Group Name*</label>
+                <input type="text" id="groupName" required minlength="3" maxlength="50" placeholder="Enter group name">
+                <div class="error-message" id="nameError"></div>
+            </div>
+
+            <div class="form-group">
+                <label for="groupDescription">Description</label>
+                <textarea id="groupDescription" placeholder="Enter group description"></textarea>
+            </div>
+
+            <div class="form-group">
+                <label>Initial Members (Optional)</label>
+                <p style="color: #666; font-size: 0.9rem; margin-bottom: 0.5rem;">
+                    All users can join and chat in any group. Adding initial members is optional.
+                </p>
+                <div class="members-container">
+                    <div class="members-list" id="selectedMembers">
+                        <!-- Selected members will appear here -->
+                    </div>
+                    <div class="member-search">
+                        <input type="text" 
+                               id="memberSearch" 
+                               placeholder="Search members to add..."
+                               oninput="searchMembers(event)">
+                        <div class="search-results" id="searchResults" style="display: none;">
+                            <!-- Search results will appear here -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="btn-container">
+                <button type="submit" class="btn-primary">Create Group</button>
+                <button type="button" class="btn-secondary" onclick="window.location.href='/groups'">Cancel</button>
+            </div>
+        </form>
+    </div>
+
+    <script>
+        const username = "<%= username %>";
+        let selectedMembers = new Set([username]); // Creator is automatically a member
+
+        // Display creator as first member
+        document.addEventListener('DOMContentLoaded', () => {
+            addMemberChip(username);
+        });
+
+        async function searchMembers(event) {
+            const searchTerm = event.target.value.trim();
+            const resultsDiv = document.getElementById('searchResults');
+            
+            if (searchTerm.length < 2) {
+                resultsDiv.style.display = 'none';
+                return;
+            }
+
+            try {
+                const response = await fetch('/all-members');
+                const data = await response.json();
+                const members = data.filter(member => 
+                    member.toLowerCase().includes(searchTerm.toLowerCase()) && 
+                    !selectedMembers.has(member)
+                );
+
+                resultsDiv.innerHTML = members.map(member => `
+                    <div class="search-result-item" onclick="selectMember('${member}')">
+                        ${member}
+                    </div>
+                `).join('');
+
+                resultsDiv.style.display = members.length ? 'block' : 'none';
+            } catch (error) {
+                console.error('Error searching members:', error);
+            }
+        }
+
+        function selectMember(member) {
+            if (!selectedMembers.has(member)) {
+                selectedMembers.add(member);
+                addMemberChip(member);
+                document.getElementById('memberSearch').value = '';
+                document.getElementById('searchResults').style.display = 'none';
+            }
+        }
+
+        function addMemberChip(member) {
+            const chip = document.createElement('div');
+            chip.className = 'member-chip';
+            chip.innerHTML = `
+                ${member}
+                ${member !== username ? `
+                    <button type="button" onclick="removeMember('${member}')">×</button>
+                ` : ''}
+            `;
+            document.getElementById('selectedMembers').appendChild(chip);
+        }
+
+        function removeMember(member) {
+            selectedMembers.delete(member);
+            const membersDiv = document.getElementById('selectedMembers');
+            membersDiv.innerHTML = '';
+            // Recreate all chips (starting with creator)
+            addMemberChip(username);
+            selectedMembers.forEach(m => {
+                if (m !== username) addMemberChip(m);
+            });
+        }
+
+        async function handleSubmit(event) {
+            event.preventDefault();
+            const nameError = document.getElementById('nameError');
+            nameError.textContent = '';
+
+            const groupName = document.getElementById('groupName').value.trim();
+            const description = document.getElementById('groupDescription').value.trim();
+            const members = Array.from(selectedMembers);
+
+            try {
+                const response = await fetch('/groups/create', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        name: groupName,
+                        description,
+                        members
+                    })
+                });
+
+                if (response.ok) {
+                    window.location.href = '/groups';
+                } else {
+                    const data = await response.json();
+                    nameError.textContent = data.message || 'Failed to create group';
+                }
+            } catch (error) {
+                console.error('Error creating group:', error);
+                nameError.textContent = 'An error occurred while creating the group';
+            }
+        }
+
+        function logout() {
+            fetch('/logout').then(() => window.location.reload());
+        }
+    </script>
+</body>
+</html> 

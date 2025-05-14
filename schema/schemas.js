@@ -76,4 +76,46 @@ const messageSchema = new mongoose.Schema({
 
 const Messages = mongoose.model("Messages", messageSchema)
 
-export {Users, Messages}
+const groupSchema = new mongoose.Schema({
+    name: {
+        type: String,
+        required: true,
+        unique: true
+    },
+    description: {
+        type: String,
+        default: ''
+    },
+    creator: {
+        type: String,
+        required: true
+    },
+    members: [{
+        type: String
+    }],
+    createdAt: {
+        type: Date,
+        default: Date.now
+    }
+});
+
+const Groups = mongoose.model("Groups", groupSchema);
+
+const groupMessageSchema = new mongoose.Schema({
+    room: {
+        type: String,
+        required: true
+    },
+    from: {
+        type: String,
+        required: true
+    },
+    content: {
+        type: String,
+        required: true
+    }
+}, {timestamps: true})
+
+const GroupMessages = mongoose.model("GroupMessages", groupMessageSchema)
+
+export {Users, Messages, GroupMessages, Groups}
