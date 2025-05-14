@@ -5,6 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Follow Requests</title>
+    <link href="/css/styles.css" rel="stylesheet" />
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -109,32 +110,62 @@
 </head>
 
 <body>
-    <h1>Follow Requests</h1>
+    <div class="app-layout">
+        <nav>
+            <div class="left-nav">
+                <h1>Chat App</h1>
+            </div>
 
-    <div class="request-list">
-        <% if (requests.length> 0) { %>
-            <% requests.forEach(function(request) { %>
-                <div class="request-item">
-                    <span class="request-username">
-                        <%= request.username %>
-                    </span>
-                    <div class="request-actions">
-                        <button class="btn btn-approve" data-id="<%- request.username %>" data-action="approve"
-                            aria-label="Approve request from <%= request.username %>">
-                            Approve
-                        </button>
-                        <button class="btn btn-delete" data-id="<%- request.username %>" data-action="delete"
-                            aria-label="Delete request from <%= request.username %>">
-                            Delete
-                        </button>
-                    </div>
+            <div class="right-nav">
+                <ul>
+                    <li>
+                        <a class="links" href="/all-members"> Browse All Members </a>
+                    </li>
+                    <li>
+                        <a class="links" href="/direct"> Browse All Groups </a>
+                    </li>
+                    <li>
+                        <a class="links" href="/requests?user=<%=username%>"> View Requests</a>
+                    </li>
+                    <li class="links">
+                        <%= username %>
+                    </li>
+                </ul>
+
+                <button class="logout" onclick="logout()">Logout</button>
+            </div>
+        </nav>
+
+        <div class="bottom-container">
+            <div class="content">
+                <h1>Follow Requests</h1>
+
+                <div class="request-list">
+                    <% if (requests.length> 0) { %>
+                        <% requests.forEach(function(request) { %>
+                            <div class="request-item">
+                                <span class="request-username">
+                                    <%= request.username %>
+                                </span>
+                                <div class="request-actions">
+                                    <button class="btn btn-approve" data-id="<%- request.username %>" data-action="approve"
+                                        aria-label="Approve request from <%= request.username %>">
+                                        Approve
+                                    </button>
+                                    <button class="btn btn-delete" data-id="<%- request.username %>" data-action="delete"
+                                        aria-label="Delete request from <%= request.username %>">
+                                        Delete
+                                    </button>
+                                </div>
+                            </div>
+                            <% }); %>
+                                <% } else { %>
+                                    <div class="no-requests">You have no pending follow requests.</div>
+                                    <% } %>
                 </div>
-                <% }); %>
-                    <% } else { %>
-                        <div class="no-requests">You have no pending follow requests.</div>
-                        <% } %>
+            </div>
+        </div>
     </div>
-
 
     <script>
         function showNotification(message, isSuccess) {
@@ -228,6 +259,10 @@
 
         // Attach event listeners when page loads
         document.addEventListener('DOMContentLoaded', attachEventListeners);
+
+        function logout() {
+            fetch("/logout").then((res) => window.location.reload());
+        }
     </script>
 </body>
 

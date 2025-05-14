@@ -10,7 +10,6 @@ const userSchema = new mongoose.Schema({
     username: {
         type: String,
         required: true,
-        unique: true
     },
     email: {
         type: String,
@@ -60,7 +59,6 @@ const messageSchema = new mongoose.Schema({
     to: {
         type: String,
         required: true,
-        unique: true
     },
     from: {
         type: String,
@@ -71,6 +69,9 @@ const messageSchema = new mongoose.Schema({
         required: true
     },
 }, {timestamps: true})
+
+
+
 
 
 const Messages = mongoose.model("Messages", messageSchema)
